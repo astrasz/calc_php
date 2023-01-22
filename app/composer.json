@@ -1,0 +1,13 @@
+{
+    "name": "astrasz/calc_php",
+    "type": "project",
+    "authors": [],
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
