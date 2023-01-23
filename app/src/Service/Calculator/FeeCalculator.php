@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Calculator;
 
-use Exception;
+use App\Exception\FeeCalculatorException;
 use App\Utils\DataHelper;
 use App\Model\LoanProposal;
 use App\Service\FeeStructure;
@@ -23,14 +23,12 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
         parent::__construct();
     }
 
-    public function calculate(LoanProposal $application): float
+    public function calculate(LoanProposal $application, array $feeStructure): float
     {
         // fetch data
         $newRequest = $application->amount();
-        $feeStructure = $this->feeStructureService->getFeeStructure();
-
         if (!$this->isRequestValid($newRequest)) {
-            throw new Exception('Proposed loan is not valid');
+            throw new FeeCalculatorException('Proposed loan is not valid');
         }
 
         // return fee if same loan already exists
@@ -56,9 +54,13 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
 
     public function returnFalseOrFeeIfLoanAlreadyExists(float $newRequest, array $feeStructure): float | false
     {
+        if (!$this->isRequestValid($newRequest)) {
+            throw new FeeCalculatorException('Proposed loan is not valid');
+        }
+
         $sameLoanKey = array_key_exists($newRequest, $feeStructure);
         if ($sameLoanKey) {
-            return $feeStructure[$newRequest];
+            return floatval($feeStructure[$newRequest]);
         }
         return false;
     }
@@ -72,14 +74,14 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
         // get boundary keys
         $loans = array_keys($feeStructure);
         $proposedLoanKey = array_search($newRequest, $loans);
-        if (!$proposedLoanKey) {
-            throw new Exception('Proposal loan does not exist in the fee structure');
+        if ($proposedLoanKey === false) {
+            throw new FeeCalculatorException('Proposal loan does not exist in the fee structure');
         }
 
         $smallerLoanKey = $proposedLoanKey === 0 ? null : $proposedLoanKey - 1;
         $biggerLoanKey = $proposedLoanKey === count($feeStructure) - 1 ? null : $proposedLoanKey + 1;
         if ($smallerLoanKey === null && $biggerLoanKey === null) {
-            throw new Exception('Cannot calculate fee without the fee structure');
+            throw new FeeCalculatorException('Cannot calculate fee without the fee structure');
         }
 
         return [$smallerLoanKey, $biggerLoanKey, $loans];
@@ -88,11 +90,12 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
     private function calculateFeeForBoundaryLoan(float $newLoan, int $nearestLoanFromStructureKey, array $loansArray, array $feeStructure): float
     {
         $nearestLoanFromStructure = $loansArray[$nearestLoanFromStructureKey];
+
         $feeFromStructure = $feeStructure[$nearestLoanFromStructure];
 
-        $feeForUnit = $nearestLoanFromStructure / $feeFromStructure;
+        $feeForUnit = $feeFromStructure / $nearestLoanFromStructure;
 
-        return $newLoan * $feeForUnit;
+        return round($newLoan * $feeForUnit, 0, PHP_ROUND_HALF_DOWN);
     }
 
     private function calculateFeeForLoanInStructureRange(array $feeStructure, array $loansArray, int $smallerLoanKey, int $biggerLoanKey, float $newLoan): float

@@ -41,7 +41,9 @@ class Calculator extends AbstractController
             }
 
             $newLoan = new LoanProposal($newRequest);
-            $fee = $this->feeCalculatorService->calculate($newLoan);
+            $feeStructure = $this->feeStructureService->getFeeStructure();
+
+            $fee = $this->feeCalculatorService->calculate($newLoan, $feeStructure);
             $this->redirect('/', ['feeForLoan' => $fee]);
         }
     }
