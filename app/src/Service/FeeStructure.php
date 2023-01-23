@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-
+use Exception;
+use App\Utils\DataHelper;
+use App\Service\Exporter\ExportToJson;
+use App\Service\Importer\ImportCsvFile;
+use App\Service\Importer\ImportJsonFile;
+use App\Service\Converter\ConvertCsvFeeStructureToArray;
+use App\Service\Converter\ConvertJsonFeeStructureToArray;
 
 class FeeStructure extends AbstractService
 {
@@ -31,22 +37,29 @@ class FeeStructure extends AbstractService
         17000 => 340,
     ];
 
-    public function __construct()
-    {
+    public function __construct(
+        private ExportToJson $exportToJsonService = new ExportToJson(),
+        private ConvertCsvFeeStructureToArray $csvConverter = new ConvertCsvFeeStructureToArray(),
+        private ConvertJsonFeeStructureToArray $jsonConverter = new ConvertJsonFeeStructureToArray(),
+        private ImportCsvFile $csvImporter = new ImportCsvFile(),
+        private ImportJsonFile $jsonImporter = new ImportJsonFile()
+    ) {
         parent::__construct();
     }
 
     public function getFeeStructure(): array
     {
         $storageType = $this->getStorageType();
+        $jsonPath = $this->getConfig()['feeStructureFiles']['json'];
+        $csvPath = $this->getConfig()['feeStructureFiles']['csv'];
         $feeStructure = [];
         switch ($storageType) {
             case StorageType::JSON:
-                $jsonContent = $this->jsonImporter->getContent($this->config['feeStructureFiles']['json']);
+                $jsonContent = $this->jsonImporter->getContent($jsonPath);
                 $feeStructure = $this->jsonConverter->convert($jsonContent);
                 break;
             case StorageType::CSV:
-                $csvContent = $this->csvImporter->getContent($this->config['feeStructureFiles']['csv']);
+                $csvContent = $this->csvImporter->getContent($csvPath);
                 $feeStructure = $this->csvConverter->convert($csvContent);
                 break;
             case StorageType::UNSET:
@@ -57,7 +70,48 @@ class FeeStructure extends AbstractService
                 $feeStructure = Self::FEE_STRUCTURE;
                 break;
         }
+        ksort($feeStructure);
+        if (!$this->isStructureValid($feeStructure)) {
+            throw new Exception('Fee structure is not valid');
+        }
 
         return $feeStructure;
+    }
+
+    public function updateFeeStructure(array $newData): void
+    {
+        $feeStructure = $this->getFeeStructure();
+        $newStructure = $this->createNewStructure($feeStructure, $newData);
+
+        if (!$this->isStructureValid($newStructure)) {
+            throw new Exception('Fee structure is not invalid');
+        }
+        $this->exportToJsonService->createOrUpdateFile($newStructure);
+    }
+
+    public function createNewStructure(array $feeStructure, array $newData): array
+    {
+        $index = 0;
+        foreach ($feeStructure as $loan => $fee) {
+            if (isset($newData[$index])) {
+                $feeStructure[$loan] = $newData[$index];
+            }
+            $index++;
+        }
+        return $feeStructure;
+    }
+
+    public function isStructureValid(array $feeStructure): bool
+    {
+        if (count($feeStructure) === 0) {
+            return false;
+        }
+
+        foreach ($feeStructure as $fee) {
+            if (!$fee) {
+                return false;
+            }
+        }
+        return true;
     }
 }

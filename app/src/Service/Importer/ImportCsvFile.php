@@ -11,7 +11,6 @@ class ImportCsvFile implements ImportFileInterface
 {
     public function getContent(string $path): string
     {
-
         $content = file_get_contents($path);
 
         if (!$content) {

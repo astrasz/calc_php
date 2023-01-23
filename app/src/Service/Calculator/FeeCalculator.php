@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Service\Calculator;
 
 use Exception;
-use App\Utils\Debug;
+use App\Utils\DataHelper;
 use App\Model\LoanProposal;
+use App\Service\FeeStructure;
 use App\Service\AbstractService;
 use App\Service\Calculator\FeeCalculatorInterface;
-use App\Service\FeeStructure;
 
 class FeeCalculator extends AbstractService implements FeeCalculatorInterface
 {
-    use Debug;
+    use DataHelper;
+
+    const MIN_LOAN = 1000;
+    const MAX_LOAN = 20000;
 
     public function __construct(private FeeStructure $feeStructureService = new FeeStructure())
     {
@@ -26,12 +29,8 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
         $newRequest = $application->amount();
         $feeStructure = $this->feeStructureService->getFeeStructure();
 
-        if (!$newRequest || $newRequest === 0) {
-            throw new Exception('Proposed loan is invalid');
-        }
-
-        if (!$newRequest || count($feeStructure) === 0) {
-            throw new Exception('Fee structure does not exist');
+        if (!$this->isRequestValid($newRequest)) {
+            throw new Exception('Proposed loan is not valid');
         }
 
         // return fee if same loan already exists
@@ -41,11 +40,9 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
 
         // calculate fee if loan is the biggest or the smallest one
         list($smallerLoanKey, $biggerLoanKey, $loans) = $this->getBoundaryLoansKeysFromFeeStructure($newRequest, $feeStructure);
-
         if ($smallerLoanKey === null) {
             return $this->calculateFeeForBoundaryLoan($newRequest, $biggerLoanKey, $loans, $feeStructure);
         }
-
         if ($biggerLoanKey === null) {
             return $this->calculateFeeForBoundaryLoan($newRequest, $smallerLoanKey, $loans, $feeStructure);
         }
@@ -111,5 +108,10 @@ class FeeCalculator extends AbstractService implements FeeCalculatorInterface
         $feeForUnit = $feesDiffrence / $loansDiffrence;
 
         return round($feeForSmallerLoan + ($newLoan - $smallerLoan) * $feeForUnit, 0, PHP_ROUND_HALF_DOWN);
+    }
+
+    private function isRequestValid(float $newRequest): bool
+    {
+        return $newRequest !== null && $newRequest >= self::MIN_LOAN && $newRequest <= self::MAX_LOAN;
     }
 }

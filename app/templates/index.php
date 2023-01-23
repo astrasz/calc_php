@@ -17,6 +17,7 @@
         body {
             height: 100vh;
             width: 100vw;
+            overflow-x: hidden;
         }
 
         div.container {
@@ -37,6 +38,33 @@
             border-bottom: 3px solid green;
             width: 50%;
         }
+
+        div.column-header {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        div.column-header>a {
+            font-size: 15px;
+            line-height: 30px;
+            min-width: 80px
+        }
+
+        div.input-group>span {
+            min-width: 200px
+        }
+
+        div.input-group>input {
+            max-width: 200px
+        }
+
+        form.edit {
+            position: absolute;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding-bottom: 50px;
+        }
     </style>
 </head>
 
@@ -44,52 +72,20 @@
 
     <div class="container">
         <h1>Fee Calculator</h1>
-        <div class="row align-items-start">
-            <div class="col table">
-                <table class="table">
-                    <h2>Fee Structure</h2>
-                    <thead>
-                        <tr>
-                            <th scope="col">#</th>
-                            <th scope="col">Loan Amount</th>
-                            <th scope="col">Fee</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $index = 1;
-                        foreach ($params['feeStructure'] as $loan => $fee) :
-                        ?>
-                            <tr>
-                                <th scope="row"><?= $index ?></th>
-                                <td><?= $loan ?></td>
-                                <td><?= $fee ?></td>
-                            </tr>
-                        <?php
-                            $index++;
-                        endforeach
-                        ?>
-                    </tbody>
-                </table>
-            </div>
-            <div class="col">
-                <h2>Check Fee For A Loan</h2>
 
-                <form action="/new" method="POST">
-                    <div class="mb-3">
-                        <label for="inputLoan" class="form-label">Proposed Loan</label>
-                        <input type="number" min="1000" max="20000" class="form-control" id="inputLoan" aria-describedby="loanHelp" name="loan">
-                        <div id="loanHelp" class="form-text">Type amount from 1 000 PLN to 20 000 PLN</div>
-                    </div>
-                    <button type="submit" class="btn-sm btn-primary">Check</button>
-                </form>
-
-                <div class="result">
-                    <h4>Result Fee</h4>
-                    <h5><?= $params["feeForLoan"] ?></h5>
-                </div>
-            </div>
-        </div>
+        <?php
+        switch ($method) {
+            case 'getCalculator':
+                require_once realpath(__DIR__) . '/calculator.php';
+                break;
+            case 'edit':
+                require_once realpath(__DIR__) . '/edit.php';
+                break;
+            default:
+                require_once('./calculator.php');
+                break;
+        }
+        ?>
     </div>
 
 </body>

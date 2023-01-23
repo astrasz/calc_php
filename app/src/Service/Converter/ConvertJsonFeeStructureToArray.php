@@ -13,9 +13,6 @@ class ConvertJsonFeeStructureToArray implements ConvertFeeStructureToArrayInterf
 {
     public function convert(string $data): ?array
     {
-
-        $feeStructure = json_decode($data, true);
-
-        return $feeStructure;
+        return json_decode($data, true);
     }
 }
