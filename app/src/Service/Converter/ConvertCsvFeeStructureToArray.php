@@ -14,7 +14,7 @@ class ConvertCsvFeeStructureToArray  implements ConvertFeeStructureToArrayInterf
         // remove headers
         unset($arrayData[0]);
         $preparedData = array_filter($arrayData, function ($value) {
-            return $value !== null && $value !== PHP_EOL;
+            return $value !== null && $value !== PHP_EOL && $value !== '';
         });
 
         // prepare result
